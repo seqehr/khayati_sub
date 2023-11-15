@@ -7,10 +7,21 @@ import { useTokenContext } from "../context/token";
 import { toast } from "react-toastify";
 import { redirect, useRouter } from "next/navigation";
 export default function Home() {
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [step, setStep] = useState(1);
+
   const [submitLoading, setSubmitLoading] = useState(false);
   const [countDown, setCountDown] = useState(0);
   const [countDownLoading, setCountDownLoading] = useState(false);
   const { token, setToken } = useTokenContext();
+  const [cart, setCart] = useState([]);
+  const [price, setPrice] = useState(0);
+  const proRef = useRef([]);
+  const products = [
+    { id: 1, title: "پادکست فرماندهی مغز", price: 50000 },
+    { id: 2, title: "کلاس حضوری دانشگاه تهران", price: 50000 },
+    { id: 3, title: "لایو های آموزشی استاد ", price: 50000 },
+  ];
   const router = useRouter();
   const fetchPhone = (e) => {
     e.preventDefault();
@@ -43,12 +54,31 @@ export default function Home() {
         if (res.isDone) {
           setToken(res.data.token);
           toast.success("ارتباط موفقیت آمیز");
-
-          router.push("/dash");
+          // router.push("/dash");
+          setStep(3);
+          setSubmitLoading(false);
         } else {
           toast.error("مشکلی رخ داده است");
           setSubmitLoading(false);
           console.log(res);
+        }
+      });
+  };
+  const fetchPayment = (e) => {
+    e.preventDefault();
+    setSubmitLoading(true);
+    const pids = JSON.stringify(cart);
+    Fetch({
+      url: `sub/purchase`,
+      method: "post",
+      body: { pids },
+      token: token,
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        if (res.isDone) {
+          toast.success("ارتباط موفقیت آمیز");
+          router.push("/dash");
         }
       });
   };
@@ -65,9 +95,15 @@ export default function Home() {
     }
     return () => clearInterval(countDownInterval);
   }, [countDown, countDownLoading]);
-
-  const [mobileNumber, setMobileNumber] = useState("");
-  const [step, setStep] = useState(1);
+  const handleCart = (v) => {
+    if (cart.includes(v.id)) {
+      setCart(cart.filter((item) => item !== v.id));
+      setPrice(price - v.price);
+    } else {
+      setCart([...cart, v.id]);
+      setPrice(price + v.price);
+    }
+  };
 
   const [verificationCode, setVerificationCode] = useState("");
   const verificationCodeError = useRef("");
@@ -116,7 +152,9 @@ export default function Home() {
     <form
       className="flex flex-col items-center justify-between p-24 text-black body"
       dir="rtl"
-      onSubmit={(e) => (step == 1 ? fetchPhone(e) : fetchCode(e))}
+      onSubmit={(e) =>
+        step == 1 ? fetchPhone(e) : step == 2 ? fetchCode(e) : fetchPayment(e)
+      }
     >
       <img src="logo.png" height={1500} />
 
@@ -129,25 +167,27 @@ export default function Home() {
         <p className=""> ✍️ مشاهده تمام لایو های آموزشی استاد مقدم جو</p>
         <p className=""> ✍️ دسترسی به دوره فرماندهی مغز</p>
         <p className=""> ✍️ کارگاه آموزشی دانشگاه علمی کاربردی تهران</p>
-        <p className="px-2 my-2 text-right bg-cyan-200">
-          هزینه اعطای دسترسی : ۵۰ هزار تومان
-        </p>
-        <p>شماره تماس : </p>
+
         {step == 1 && (
-          <InputBase
-            type="text"
-            dir="ltr"
-            sx={{ letterSpacing: 10 }}
-            className="px-2 mx-4 border border-dashed rounded w-60"
-            onChange={handleMobileNumberOnChange}
-            placeholder="09_________"
-            value={mobileNumber}
-            inputProps={{
-              maxLength: 11,
-              minLength: 11,
-              required: true,
-            }}
-          />
+          <>
+            <p className="mt-4 mb-2 text-center">شماره تماس : </p>
+            <div className="flex items-center justify-center">
+              <InputBase
+                type="text"
+                dir="ltr"
+                sx={{ letterSpacing: 10 }}
+                className="px-2 border border-black border-dashed rounded w-60"
+                onChange={handleMobileNumberOnChange}
+                placeholder="09_________"
+                value={mobileNumber}
+                inputProps={{
+                  maxLength: 11,
+                  minLength: 11,
+                  required: true,
+                }}
+              />
+            </div>
+          </>
         )}
         {step === 2 && (
           <p className="my-4 text-sm font-bold text-center">
@@ -156,13 +196,13 @@ export default function Home() {
           </p>
         )}
         {step === 2 && (
-          <>
+          <div className="flex justify-center">
             {/* <Verification Code | Step 2> */}
 
             <input
               value={verificationCode}
               onChange={handleVerificationCodeOnChange}
-              className={`block text-lg rounded p-2 w-full text-center mx-auto bg-[#D9D9D9] ${
+              className={`text-center px-2 border border-black border-dashed rounded w-60 ${
                 verificationCode ? "tracking-[7px]" : ""
               }`}
               dir="ltr"
@@ -171,7 +211,7 @@ export default function Home() {
               placeholder="x x x x x x"
               required
             />
-          </>
+          </div>
         )}
         {step == 2 ? (
           countDown > 0 ? (
@@ -184,7 +224,35 @@ export default function Home() {
         )}
       </div>
 
-      <button className="px-4 py-2 my-1 my-4 bg-green-200 rounded">
+      {step == 3 && (
+        <div className="mt-4">
+          <p>
+            قصد خرید کدام یک از اشتراک ها را دارید ؟ (میتوانید یکی یا همه را
+            انتخاب کنید )
+          </p>
+          <div className="flex flex-col items-start justify-start mt-4">
+            {products.map((pro) => (
+              <div
+                key={pro.id}
+                onClick={() => handleCart(pro)}
+                className={`${
+                  cart.includes(pro.id) ? "bg-green-400" : ""
+                } px-4 my-1 border border-green-400 border-solid rounded cursor-pointer`}
+              >
+                <input
+                  type="checkbox"
+                  ref={proRef[pro.id]}
+                  checked={cart.includes(pro.id)}
+                />{" "}
+                {pro.title}
+              </div>
+            ))}
+          </div>
+          <p className="text-center"> مبلغ قابل پرداخت : {price} تومان</p>
+        </div>
+      )}
+
+      <button className="flex justify-center w-48 px-4 py-2 my-4 text-center bg-green-200 rounded ">
         {submitLoading ? (
           <svg
             aria-hidden="true"
@@ -204,8 +272,10 @@ export default function Home() {
           </svg>
         ) : step == 1 ? (
           "مرحله بعدی"
-        ) : (
+        ) : step == 2 ? (
           "ثبت کد تایید"
+        ) : (
+          "پرداخت و دریافت"
         )}
       </button>
     </form>

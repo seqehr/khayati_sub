@@ -8,10 +8,12 @@ const DashPage = async () => {
 
   if (token && typeof token.value === "string") {
     const data = await fetch(token.value);
+    return <Dash />;
     // return JSON.stringify(data);
-    if (data.data == 0)
-      return redirect(`https://lezatkhayati.com/api/sub/pay/${token.value}`);
-    else return <Dash />;
+
+    // if (data.data == 0)
+    //   return redirect(`https://lezatkhayati.com/api/sub/pay/${token.value}`);
+    // else return <Dash />;
   } else return redirect("/");
 };
 
