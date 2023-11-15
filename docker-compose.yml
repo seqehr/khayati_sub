@@ -1,0 +1,23 @@
+# docker-compose.yml
+
+version: "3"
+
+services:
+  khyti_sub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: khyti_sub
+    hostname: khyti_sub
+    # command: [ "tail", "-F", "anything" ]    
+    command: [ "npm", "run", "dev" ]    
+    restart: always
+    volumes:
+      - ./:/app
+    ports:
+      - 7000:7000
+    networks:
+      - khayati_laravel_lkapp-network
+networks:
+  khayati_laravel_lkapp-network:
+    external: true
