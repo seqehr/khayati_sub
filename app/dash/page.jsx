@@ -7,7 +7,7 @@ const DashPage = async () => {
   const token = cookieStore.get("token");
 
   if (token && typeof token.value === "string") {
-    const data = await fetch(token.value);
+    // const data = await fetch(token.value);
     return <Dash />;
     // return JSON.stringify(data);
 

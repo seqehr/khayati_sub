@@ -1,10 +1,14 @@
 "use client";
 import { useTokenContext } from "../context/token";
 import React, { useEffect, useState, useRef } from "react";
+import { redirect, useRouter } from "next/navigation";
 import Box from "@mui/material/Box";
 import Switch from "@mui/material/Switch";
 import Paper from "@mui/material/Paper";
 import Grow from "@mui/material/Grow";
+import { FcLock } from "react-icons/fc";
+// import { Steps, Hints } from "intro.js-react";
+import { FcOk } from "react-icons/fc";
 import FormControlLabel from "@mui/material/FormControlLabel";
 import { Grid } from "@mui/material";
 import Fetch from "../Helpers/Fetch";
@@ -13,71 +17,60 @@ import IconButton from "@mui/material/IconButton";
 import Link from "next/link";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { palette } from "@mui/system";
+import toPersianNumber from "../Helpers/toPersianNumber";
+import Image from "next/image";
+import { uniJson } from "../Helpers/data";
+import { brainJson } from "../Helpers/data";
+import { products } from "../Helpers/data";
+// import "intro.js/introjs.css";
+// import "intro.js/introjs-rtl.css";
+// import "intro.js/themes/introjs-modern.css";
 
-const brainJson = [
-  { url: "https://dl.s9p.ir/sub/brain/01.mp3", title: "قسمت اول" },
-  { url: "https://dl.s9p.ir/sub/brain/02.mp3", title: "قسمت دوم" },
-  { url: "https://dl.s9p.ir/sub/brain/03.mp3", title: "قسمت سوم" },
-  { url: "https://dl.s9p.ir/sub/brain/04.mp3", title: "قسمت چهارم" },
-  { url: "https://dl.s9p.ir/sub/brain/05.mp3", title: "قسمت پنجم" },
-  { url: "https://dl.s9p.ir/sub/brain/06.mp3", title: "قسمت ششم" },
-  { url: "https://dl.s9p.ir/sub/brain/07.mp3", title: "قسمت هفتم" },
-  { url: "https://dl.s9p.ir/sub/brain/08.mp3", title: "قسمت هشتم" },
-];
-const uniJson = [
-  { url: "https://dl.s9p.ir/sub/uni/01.mp4", title: "قسمت اول" },
-  { url: "https://dl.s9p.ir/sub/uni/02.mp4", title: "قسمت دوم" },
-  { url: "https://dl.s9p.ir/sub/uni/03.mp4", title: "قسمت سوم" },
-  { url: "https://dl.s9p.ir/sub/uni/04.mp4", title: "قسمت چهارم" },
-  { url: "https://dl.s9p.ir/sub/uni/05.mp4", title: "قسمت پنجم" },
-  { url: "https://dl.s9p.ir/sub/uni/06.mp4", title: "قسمت ششم" },
-  { url: "https://dl.s9p.ir/sub/uni/07.mp4", title: "قسمت هفتم" },
-  { url: "https://dl.s9p.ir/sub/uni/08.mp4", title: "قسمت هشتم" },
-];
-const brain = (
-  <div className="grid grid-cols-1 gap-2 justify-items-center place-content-center">
-    {brainJson.map((brain) => (
-      <div key={brain.url}>
-        <p>{brain.title}</p>
-        <audio controls preload="false">
-          <source src={brain.url} type="audio/mp3" />
-        </audio>
-      </div>
-    ))}
-  </div>
-);
-
-const uni = (
-  <div className="grid grid-cols-1 gap-2 justify-items-center ">
-    {uniJson.map((uni) => (
-      <div key={uni.url}>
-        <p>{uni.title}</p>
-        <video width="320" height="240" controls>
-          <source src={uni.url} type="video/mp4" />
-        </video>
-      </div>
-    ))}
-  </div>
-);
 const Dash = () => {
+  const router = useRouter();
   const [cart, setCart] = useState([]);
+  const [checkeds, setCheckeds] = React.useState(["1", "2"]);
+  const [price, setPrice] = React.useState(0);
+
   const [checked, setChecked] = React.useState(false);
   const [isUni, setIsUni] = React.useState(false);
   const [userProducts, setUserProducts] = useState([]);
   const refs = useRef([]);
-  const { token } = useTokenContext();
-  const handleChange = (type) => {
-    if (type == "brain") setChecked((prev) => !prev);
-    if (type == "uni") setIsUni((prev) => !prev);
-  };
+  const { token, setToken } = useTokenContext();
+  const handleChange = (id) => {
+    const isChecked = checkeds.includes(id);
 
+    // If it exists, remove it; otherwise, add it
+    setCheckeds((prevChecked) =>
+      isChecked
+        ? prevChecked.filter((exists) => exists !== id)
+        : [...prevChecked, id]
+    );
+
+    // if (type == "brain") setChecked((prev) => !prev);
+    // if (type == "uni") setIsUni((prev) => !prev);
+  };
+  const onExit = () => {
+    // console.log("tmume");
+    // setStepsEnabled(true);
+  };
   const fetchCart = async (token) => {
     await Fetch({ url: "sub/cart", token: token, method: "post" })
       .then((res) => res.json())
       .then((res) => {
-        res.data.forEach((pro) => {
-          setCart((cart) => [...cart, pro.product_id]);
-        });
+        setCart([]);
+        if (res.isDone) {
+          res.data.forEach((pro) => {
+            setCart((cart) => [...cart, pro.product_id]);
+            setPrice(
+              (price) =>
+                price + products.find((item) => item.id == pro.product_id).price
+            );
+          });
+        } else if (!res.isDone && res.message == "wrong credentials") {
+          setToken(false);
+          router.push("/");
+        }
         console.log(res.data);
       });
   };
@@ -85,15 +78,23 @@ const Dash = () => {
     await Fetch({ url: "sub/userProducts", token: token, method: "post" })
       .then((res) => res.json())
       .then((res) => {
-        res.data.forEach((pro) => {
-          setUserProducts((userProducts) => [...userProducts, pro.product_id]);
-        });
+        if (res.isDone) {
+          res.data.forEach((pro) => {
+            setUserProducts((userProducts) => [
+              ...userProducts,
+              { id: pro.product_id, expired: pro.expired, remain: pro.remain },
+            ]);
+          });
+        } else if (!res.isDone && res.message == "wrong credentials") {
+          setToken(false);
+          router.push("/");
+        }
         console.log(userProducts);
       });
   };
-  const addToCart = (v) => {
-    setCart((cart) => [...cart, v.toString()]);
-    const pids = JSON.stringify([v]);
+  const addToCart = (product) => {
+    setCart((cart) => [...cart, product.id.toString()]);
+    const pids = JSON.stringify([product.id]);
     Fetch({
       url: `sub/purchase`,
       method: "post",
@@ -104,15 +105,17 @@ const Dash = () => {
       .then((res) => {
         if (res.isDone) {
           toast.success("به سبد خرید اضافه شد ");
+          setPrice(price + product.price);
         }
       });
   };
 
-  const deletePurchase = (id) => {
-    setCart((cart) => cart.filter((item) => item !== id));
+  const deletePurchase = (product) => {
+    setPrice(price - product.price);
+    setCart((cart) => cart.filter((item) => item !== product.id));
 
     Fetch({
-      url: `sub/purchase/delete/${id}`,
+      url: `sub/purchase/delete/${product.id}`,
       token: token,
     })
       .then((res) => res.json())
@@ -128,141 +131,240 @@ const Dash = () => {
       fetchUserProducts(token);
     }
   }, [token]);
+  // const [currentStep, setCurrentStep] = useState(0);
+
+  // const [stepsEnabled, setStepsEnabled] = useState(false);
+  // useEffect(() => {
+  //   if (currentStep == 9) setStepsEnabled(false);
+  //   else setStepsEnabled(true);
+
+  //   console.log("use effect called");
+  // }, [currentStep]);
+  // const steps = [
+  //   {
+  //     element: ".step1",
+  //     intro: "از اینجا میتونی دوره های مورد نظر خودت رو ببینی ",
+  //     // position: "left",
+  //     // tooltipClass: "myTooltipClass",
+  //     // highlightClass: "myHighlightClass",
+  //   },
+  //   {
+  //     element: ".step2",
+  //     intro: "با زدن این دکمه میتونی دوره رو به سبد خرید خودت اضافه کنی",
+  //   },
+  //   {
+  //     element: ".step3",
+  //     intro: "حالا از این قسمت میتونی برای  تسویه حساب و دریافت دوره اقدام کنی",
+  //     position: "top",
+  //   },
+  // ];
+  const renew = (id) => {
+    Fetch({ url: `sub/userProducts/renew/${id}`, token: token }).then((res) => {
+      // if (res.isDone) {
+      setCart((cart) => [...cart, id]);
+      toast.success("مجددا به سبد خرید اضافه شد");
+      // }
+    });
+  };
+  const courseUi = (id) => {
+    switch (id) {
+      case "1":
+        return <>{brain}</>;
+      case "2":
+        return <>{uni}</>;
+
+      default:
+        break;
+    }
+  };
+
+  const pay = () => {
+    Fetch({
+      url: `sub/pay`,
+      token: token,
+      method: "post",
+      body: { price: price },
+    })
+      .then((res) => res.json())
+      .then((res) => {
+        router.push(res.data.url);
+      });
+  };
+
   return (
-    <div className="container flex flex-col pb-4 mx-auto w-80" dir="rtl">
-      {cart.length > 0 && (
-        <div className="flex items-center justify-between px-2 mt-4 bg-green-100">
-          <div className="flex flex-col">
-            <p> سبد خرید : </p>
-            {cart.length > 0 ? (
-              <>
-                {cart.length} محصول به مبلغ {cart.length * 50000} ت
-              </>
-            ) : (
-              "۰ محصول"
+    <div>
+      {/* <Steps
+        enabled={stepsEnabled}
+        steps={steps}
+        initialStep={currentStep}
+        onExit={onExit}
+        // ref={(steps) => introStep}
+        options={{ doneLabel: "پایان", nextLabel: "بعدی", prevLabel: "قبلی" }}
+        // onBeforeChange={onBeforeChange}
+      /> */}
+      <div>
+        {products.map((uiProduct, index) => (
+          <div key={index}>
+            <div
+              className="flex items-center justify-start  gap-2"
+              ref={(element) => {
+                refs.current[uiProduct.id] = element;
+              }}
+            >
+              <Switch
+                checked={checkeds.includes(uiProduct.id)}
+                onChange={(e) => handleChange(uiProduct.id)}
+                className="step1"
+              />
+              <div className="">
+                <div className="px-2  rounded py-1 ">
+                  <p className="bg-green-200">{uiProduct.name}</p>
+                  <hr />
+                  {userProducts.find((item) => item.id === uiProduct.id)
+                    ?.remain !== undefined ? (
+                    <div className=" bg-green-800 text-white px-2 text-[10px]">
+                      {userProducts.find((item) => item.id === uiProduct.id)
+                        .remain + "روز تا پایان اشتراک"}
+                    </div>
+                  ) : (
+                    ""
+                  )}
+                </div>
+              </div>
+              <div></div>
+            </div>
+            {/* {JSON.stringify(userProducts)} */}
+            <div
+              className={`${
+                checkeds.includes(uiProduct.id) ? "block" : "hidden"
+              }  my-4 shadow-lg rounded-lg py-4`}
+            >
+              {userProducts.find((item) => item.id === uiProduct.id) ? (
+                userProducts.find((item) => item.id === uiProduct.id)
+                  .expired ? (
+                  <div>
+                    {!cart.includes(uiProduct.id) ? (
+                      <div className="flex items-center flex-col">
+                        <div>اشتراک شما در این دوره به پایان رسیده است</div>
+                        <button
+                          onClick={() => renew(uiProduct.id)}
+                          className="px-2 text-center rounded bg-cyan-300 step2"
+                        >
+                          تمدید اشتراک
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center">
+                        <p>
+                          فاکتور تمدید این دوره به سبد خرید شما اضافه گردید لطفا
+                          آن را پرداخت کنید
+                        </p>
+                        <div className="flex">
+                          {" "}
+                          <button
+                            onClick={pay}
+                            className="text-center rounded bg-cyan-300 flex items-center justify-center"
+                          >
+                            <> پرداخت و مشاهده</>
+                          </button>
+                          <IconButton
+                            aria-label="delete"
+                            size="small"
+                            onClick={() => deletePurchase(uiProduct)}
+                          >
+                            <DeleteIcon fontSize="inherit" />
+                          </IconButton>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  // courseUi(uiProduct.id)
+                  <div className="flex items-center justify-center">
+                    <Link
+                      href={`/dash/course/${uiProduct.id}`}
+                      className="text-center bg-green-200 rounded-lg px-2 py-1"
+                    >
+                      مشاهده دوره
+                    </Link>
+                  </div>
+                )
+              ) : (
+                <>
+                  {cart.includes(uiProduct.id) ? (
+                    <div className="flex flex-col items-center justify-center text-center gap-3  px-2">
+                      <FcOk size={50} />
+                      <p className="bg-yellow-300 rounded-lg px-2 ">
+                        این دوره در سبد خرید شما موجود است اما هنوز نخریده اید
+                      </p>
+                      <div className="flex">
+                        {" "}
+                        <button
+                          onClick={pay}
+                          className="px-2 mx-2 text-center rounded bg-cyan-300 flex items-center"
+                        >
+                          پرداخت و مشاهده
+                        </button>
+                        <IconButton
+                          aria-label="delete"
+                          size="small"
+                          onClick={() => deletePurchase(uiProduct)}
+                        >
+                          <DeleteIcon fontSize="inherit" />
+                        </IconButton>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center gap-2 px-2">
+                      <FcLock size={50} />
+                      <p className="text-justify">
+                        در این قسمت توضیحات قرار خواهید گرفت
+                      </p>
+                      <p className="bg-yellow-300 rounded-lg px-2">
+                        برای سفارش این دوره ابتدا آن را به سبد خرید اضافه کنید
+                      </p>
+                      <button
+                        className="px-2 text-center rounded bg-cyan-300 max-auto step2"
+                        onClick={() => addToCart(uiProduct)}
+                      >
+                        افزودن به سبد خرید
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className=" sticky bottom-0 right-0 left-0 step3   ">
+        {cart.length > 0 && (
+          <div
+            className="flex items-center justify-between px-2 border-t-2 border-yellow-300 mt-4 bg-green-100 sticky  bottom-0 right-0 left-0 lg:w-96 w-full mx-auto pb-10 "
+            dir="rtl"
+          >
+            <div className="flex flex-col  ">
+              <p> سبد خرید : </p>
+              {cart.length > 0 ? (
+                <>
+                  {toPersianNumber(cart.length)} دوره به مبلغ{" "}
+                  {toPersianNumber(price)} ت
+                </>
+              ) : (
+                "۰ دوره"
+              )}
+            </div>
+            {cart.length > 0 && (
+              <button
+                onClick={pay}
+                className="px-2 mx-2 text-center rounded bg-cyan-300 max-auto "
+              >
+                پرداخت
+              </button>
             )}
           </div>
-          {cart.length > 0 && (
-            <Link
-              href={`https://lezatkhayati.com/api/sub/pay/${token}`}
-              className="px-2 mx-2 text-center rounded bg-cyan-300 max-auto"
-            >
-              پرداخت
-            </Link>
-          )}
-        </div>
-      )}
-      <img src="logo.png" alt="" className="mx-auto" srcset="" />
-      <p className="text-center">آکادمی لذت خیاطی </p>
-
-      <div
-        className="flex items-center justify-start"
-        ref={(element) => {
-          refs.current[1] = element;
-        }}
-      >
-        <Switch checked={checked} onChange={(e) => handleChange("brain")} />
-        <p className="px-2 bg-green-200 rounded py1">پادکست فرماندهی مغز</p>
-      </div>
-
-      <div className={`${checked ? "block" : "hidden"}  my-4`}>
-        {userProducts.includes("1") ? (
-          brain
-        ) : (
-          <>
-            <img src="lock.png" width={100} height={100} className="mx-auto" />
-            {cart.includes("1") ? (
-              <div className="flex flex-col items-center justify-center">
-                <p>این محصول در سبد خرید شما موجود است اما هنوز نخریده اید</p>
-                <div className="flex">
-                  {" "}
-                  <Link
-                    href={`https://lezatkhayati.com/api/sub/pay/${token}`}
-                    className="px-2 mx-2 text-center rounded bg-cyan-300 max-auto"
-                  >
-                    پرداخت و مشاهده
-                  </Link>
-                  <IconButton
-                    aria-label="delete"
-                    size="small"
-                    onClick={() => deletePurchase("1")}
-                  >
-                    <DeleteIcon fontSize="inherit" />
-                  </IconButton>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center">
-                <p>
-                  برای مشاهده این محصول ابتدا آن را به سبد خرید اضافه کرده و سپس
-                  خریداری کنید
-                </p>
-                <button
-                  className="px-2 text-center rounded bg-cyan-300 max-auto"
-                  onClick={() => addToCart(1)}
-                >
-                  افزودن به سبد خرید
-                </button>
-              </div>
-            )}
-          </>
         )}
-      </div>
-      <div
-        className="flex items-center justify-start"
-        ref={(element) => {
-          refs.current[2] = element;
-        }}
-      >
-        <Switch checked={isUni} onChange={(e) => handleChange("uni")} />
-        <p className="px-2 bg-green-200 rounded py1">
-          کارگاه آموزشی دانشگاه تهران
-        </p>
-      </div>
-
-      <div className={`${isUni ? "block" : "hidden"}  my-4`}>
-        {" "}
-        {userProducts.includes("2") ? (
-          uni
-        ) : (
-          <>
-            <img src="lock.png" width={100} height={100} className="mx-auto" />
-            {cart.includes("2") ? (
-              <div className="flex flex-col items-center justify-center">
-                <p>این محصول در سبد خرید شما موجود است اما هنوز نخریده اید</p>
-                <div className="flex">
-                  {" "}
-                  <Link
-                    href={`https://lezatkhayati.com/api/sub/pay/${token}`}
-                    className="px-2 mx-2 text-center rounded bg-cyan-300 max-auto"
-                  >
-                    پرداخت و مشاهده
-                  </Link>
-                  <IconButton
-                    aria-label="delete"
-                    size="small"
-                    onClick={() => deletePurchase("2")}
-                  >
-                    <DeleteIcon fontSize="inherit" />
-                  </IconButton>
-                </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center">
-                <p>
-                  برای مشاهده این محصول ابتدا آن را به سبد خرید اضافه کرده و سپس
-                  خریداری کنید
-                </p>
-                <button
-                  className="px-2 text-center rounded bg-cyan-300 max-auto"
-                  onClick={() => addToCart(2)}
-                >
-                  افزودن به سبد خرید
-                </button>
-              </div>
-            )}
-          </>
-        )}{" "}
       </div>
     </div>
   );

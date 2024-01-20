@@ -6,16 +6,21 @@ import Fetch from "../Helpers/Fetch";
 import { useTokenContext } from "../context/token";
 import { toast } from "react-toastify";
 import { redirect, useRouter } from "next/navigation";
+import InstallPWA from "./Install";
+// import { Steps, Hints } from "intro.js-react";
+// import "intro.js/introjs.css";
+// import "intro.js/introjs-rtl.css";
+// import "intro.js/themes/introjs-modern.css";
+
 export default function Home() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [step, setStep] = useState(1);
-
   const [submitLoading, setSubmitLoading] = useState(false);
   const [countDown, setCountDown] = useState(0);
   const [countDownLoading, setCountDownLoading] = useState(false);
   const { token, setToken } = useTokenContext();
-  const [cart, setCart] = useState([]);
-  const [price, setPrice] = useState(0);
+  // const [cart, setCart] = useState([]);
+  // const [price, setPrice] = useState(0);
   const proRef = useRef([]);
   const products = [
     { id: 1, title: "پادکست فرماندهی مغز", price: 50000 },
@@ -35,7 +40,7 @@ export default function Home() {
       .then((res) => {
         console.log(res.isDone);
         res.isDone
-          ? (setStep(2), setSubmitLoading(false))
+          ? (customStep(4), setStep(2), setSubmitLoading(false))
           : (toast.error("لحظاتی بعد مجددا اقدام نمایید"),
             setSubmitLoading(false));
       });
@@ -44,6 +49,7 @@ export default function Home() {
   const fetchCode = (e) => {
     e.preventDefault();
     setSubmitLoading(true);
+    setCurrentStep(9);
     Fetch({
       url: "sub/twoFactor",
       method: "post",
@@ -55,8 +61,8 @@ export default function Home() {
           setToken(res.data.token);
           toast.success("ارتباط موفقیت آمیز");
           // router.push("/dash");
-          setStep(3);
-          setSubmitLoading(false);
+          // setStep(3);
+          router.push("/dash");
         } else {
           toast.error("مشکلی رخ داده است");
           setSubmitLoading(false);
@@ -64,24 +70,24 @@ export default function Home() {
         }
       });
   };
-  const fetchPayment = (e) => {
-    e.preventDefault();
-    setSubmitLoading(true);
-    const pids = JSON.stringify(cart);
-    Fetch({
-      url: `sub/purchase`,
-      method: "post",
-      body: { pids },
-      token: token,
-    })
-      .then((res) => res.json())
-      .then((res) => {
-        if (res.isDone) {
-          toast.success("ارتباط موفقیت آمیز");
-          router.push("/dash");
-        }
-      });
-  };
+  // const fetchPayment = (e) => {
+  //   e.preventDefault();
+  //   setSubmitLoading(true);
+  //   const pids = JSON.stringify(cart);
+  //   Fetch({
+  //     url: `sub/purchase`,
+  //     method: "post",
+  //     body: { pids },
+  //     token: token,
+  //   })
+  //     .then((res) => res.json())
+  //     .then((res) => {
+  //       if (res.isDone) {
+  //         toast.success("ارتباط موفقیت آمیز");
+  //         router.push("/dash");
+  //       }
+  //     });
+  // };
   const deacreaseCountDown = () =>
     setCountDown((current) => {
       if (current > 0) {
@@ -95,15 +101,15 @@ export default function Home() {
     }
     return () => clearInterval(countDownInterval);
   }, [countDown, countDownLoading]);
-  const handleCart = (v) => {
-    if (cart.includes(v.id)) {
-      setCart(cart.filter((item) => item !== v.id));
-      setPrice(price - v.price);
-    } else {
-      setCart([...cart, v.id]);
-      setPrice(price + v.price);
-    }
-  };
+  // const handleCart = (v) => {
+  //   if (cart.includes(v.id)) {
+  //     setCart(cart.filter((item) => item !== v.id));
+  //     setPrice(price - v.price);
+  //   } else {
+  //     setCart([...cart, v.id]);
+  //     setPrice(price + v.price);
+  //   }
+  // };
 
   const [verificationCode, setVerificationCode] = useState("");
   const verificationCodeError = useRef("");
@@ -148,35 +154,104 @@ export default function Home() {
     }
     setMobileNumber(properMobileNumber);
   };
+  const steps = [
+    {
+      element: ".step1",
+      intro:
+        "سلام من دستیار شما هستم 🤖 <br> و قراره تا پایان خرید همراهیتون کنم ",
+      // position: "left",
+      // tooltipClass: "myTooltipClass",
+      // highlightClass: "myHighlightClass",
+    },
+    {
+      element: ".step2",
+      intro:
+        "در این قسمت امکاناتی که پس از خرید اشتراک در دسترستان قرار خواهد گرفت را مشاهده خواهید کرد",
+    },
+    {
+      element: ".step3",
+      intro: "برای شروع شماره تماس خود را وارد نمایید",
+    },
+    {
+      element: ".step4",
+      intro: "حالا روی گزینه مرحله بعدی بزنید",
+    },
+    {
+      element: ".step5",
+      intro: "حالا کدی که براتون اس ام اس شد اینجا وارد کنید",
+    },
+    {
+      element: ".step6",
+      intro: "حالا این گزینه رو بزنید",
+    },
+  ];
+  const onExit = () => {
+    // console.log("tmume");
+    // setStepsEnabled(true);
+  };
+  const [currentStep, setCurrentStep] = useState(0);
+
+  const [stepsEnabled, setStepsEnabled] = useState(false);
+  useEffect(() => {
+    if (currentStep == 9) setStepsEnabled(false);
+    else setStepsEnabled(true);
+
+    console.log("use effect called");
+  }, [currentStep]);
+  const [introStep, setIntroStep] = useState(0);
+  const onBeforeChange = (nextStepIndex) => {
+    if (nextStepIndex === 3) {
+      setIntroStep(4);
+    }
+  };
+  const customStep = (step) => {
+    // setStepsEnabled(false);
+    setCurrentStep(9);
+    setTimeout(() => {
+      setCurrentStep(step);
+    }, 1000);
+    // setStepsEnabled(true);
+    // console.log(stepsEnabled);
+  };
   return (
     <form
-      className="flex flex-col items-center justify-between p-24 text-black body"
+      className="container mx-auto grid grid-cols-12 place-items-center justify-items-center mt-4 text-black body"
       dir="rtl"
-      onSubmit={(e) =>
-        step == 1 ? fetchPhone(e) : step == 2 ? fetchCode(e) : fetchPayment(e)
+      onSubmit={
+        (e) => (step == 1 ? fetchPhone(e) : step == 2 ? fetchCode(e) : "") // fetchPayment(e)
       }
     >
-      <img src="logo.png" height={1500} />
+      {/* <Steps
+        enabled={stepsEnabled}
+        steps={steps}
+        initialStep={currentStep}
+        onExit={onExit}
+        // ref={(steps) => introStep}
+        options={{ doneLabel: "پایان", nextLabel: "بعدی", prevLabel: "قبلی" }}
+        // onBeforeChange={onBeforeChange}
+      /> */}
 
-      <div className="font-bold leading-6 tracking-normal text-right">
-        <p className="mb-4">آکادمی لذت خیاطی </p>
-        <p className="">برای مشاهده این بخش احتیاج به دسترسی ویژه دارید</p>
-        <p>با خرید دسترسی از امکانات زیر برخوردار خواهید شد</p>
-        <p className="mt-5"> ✍️ دسترسی مادام العمر به : </p>
-
-        <p className=""> ✍️ مشاهده تمام لایو های آموزشی استاد مقدم جو</p>
-        <p className=""> ✍️ دسترسی به دوره فرماندهی مغز</p>
-        <p className=""> ✍️ کارگاه آموزشی دانشگاه علمی کاربردی تهران</p>
-
+      <img src="logo.png" height={1500} className="col-span-12 " />
+      <div className="font-bold leading-6 tracking-normal text-right col-span-12">
+        <p className="mb-4 text-center step1">آکادمی لذت خیاطی </p>
+        {/* ine : <InstallPWA /> */}
+        <p>برای مشاهده این بخش احتیاج به اشتراک ویژه دارید</p>
+        <div className="step2 my-4">
+          <p>با خرید اشتراک از امکانات زیر برخوردار خواهید شد</p>
+          <p className="mt-5"> ✍️ دسترسی یکساله به : </p>
+          <p className=""> ✍️ مشاهده تمام لایو های آموزشی استاد مقدم جو</p>
+          <p className=""> ✍️ دسترسی به دوره فرماندهی مغز</p>
+          <p className=""> ✍️ کارگاه آموزشی دانشگاه علمی کاربردی تهران</p>
+        </div>
         {step == 1 && (
           <>
-            <p className="mt-4 mb-2 text-center">شماره تماس : </p>
+            <p className="mt-4 mb-2 text-center ">شماره تماس : </p>
             <div className="flex items-center justify-center">
               <InputBase
-                type="text"
+                type="tel"
                 dir="ltr"
                 sx={{ letterSpacing: 10 }}
-                className="px-2 border border-black border-dashed rounded w-60"
+                className="px-2 border border-gray-500 border-solid rounded w-60 py-3 step3"
                 onChange={handleMobileNumberOnChange}
                 placeholder="09_________"
                 value={mobileNumber}
@@ -187,6 +262,9 @@ export default function Home() {
                 }}
               />
             </div>
+            <div className="col-span-12 font-light text-center my-2">
+              حتما اعداد کیبورد خود را به انگلیسی تغییر دهید
+            </div>
           </>
         )}
         {step === 2 && (
@@ -196,13 +274,13 @@ export default function Home() {
           </p>
         )}
         {step === 2 && (
-          <div className="flex justify-center">
+          <div className="flex justify-center ">
             {/* <Verification Code | Step 2> */}
 
             <input
               value={verificationCode}
               onChange={handleVerificationCodeOnChange}
-              className={`text-center px-2 border border-black border-dashed rounded w-60 ${
+              className={`step5 text-center px-2 border border-black border-dashed rounded w-60  ${
                 verificationCode ? "tracking-[7px]" : ""
               }`}
               dir="ltr"
@@ -223,8 +301,7 @@ export default function Home() {
           ""
         )}
       </div>
-
-      {step == 3 && (
+      {/* {step == 3 && (
         <div className="mt-4">
           <p>
             قصد خرید کدام یک از اشتراک ها را دارید ؟ (میتوانید یکی یا همه را
@@ -250,9 +327,12 @@ export default function Home() {
           </div>
           <p className="text-center"> مبلغ قابل پرداخت : {price} تومان</p>
         </div>
-      )}
-
-      <button className="flex justify-center w-48 px-4 py-2 my-4 text-center bg-green-200 rounded ">
+      )} */}
+      <button
+        className={`flex justify-center w-48 px-4 py-2 my-4 text-center bg-green-200 rounded col-span-12  ${
+          step == 1 ? "step4" : "step6"
+        }`}
+      >
         {submitLoading ? (
           <svg
             aria-hidden="true"
@@ -278,6 +358,19 @@ export default function Home() {
           "پرداخت و دریافت"
         )}
       </button>
+      <a
+        referrerPolicy="origin"
+        target="_blank"
+        href="https://trustseal.enamad.ir/?id=432292&Code=ShZPqSXlagWT1yVzuf89SP7RcfhZ7v6c"
+        className="col-span-12"
+      >
+        <img
+          referrerPolicy="origin"
+          src="https://trustseal.enamad.ir/logo.aspx?id=432292&Code=ShZPqSXlagWT1yVzuf89SP7RcfhZ7v6c"
+          alt=""
+          Code="ShZPqSXlagWT1yVzuf89SP7RcfhZ7v6c"
+        />
+      </a>
     </form>
   );
 }
